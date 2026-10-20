@@ -338,3 +338,68 @@ def test_fork_seam_is_still_in_place(path, needle):
     A sync that drops one fails here, by name, instead of silently."""
     from core.paths import app_root
     assert needle in (app_root() / path).read_text(encoding="utf-8")
+
+
+# ---- GLB import (M6) ------------------------------------------------------
+
+def test_glb_import_keeps_the_surface_and_reexports_it(tmp_path):
+    from formats.glb import load_glb
+    base = _flat(tmp_path / "steel_diff.png", (160, 160, 170, 255))
+    arm = _flat(tmp_path / "steel_arm.png", (220, 90, 255, 255))
+    nrm = _flat(tmp_path / "steel_nor_gl.png", (128, 128, 255, 255))
+    s = pbr.from_kind("metal")
+    s.roughness = 0.8
+    s.maps = {"ao": MapSlot({"path": arm}, channel="r", strength=0.7),
+              "roughness": MapSlot({"path": arm}, channel="g"),
+              "metallic": MapSlot({"path": arm}, channel="b"),
+              "normal": MapSlot({"path": nrm}, strength=0.6)}
+    scene = Scene()
+    mat = Material("Acero", texture={"path": base, "sw": 1.0, "sh": 1.0},
+                   surface=s, finish="metal")
+    scene.materials["Acero"] = mat
+    _quad(scene).attrs.update(mat.face_attrs())
+    glow = Material("LED", color=(1.0, 0.9, 0.7), surface=pbr.from_kind("light"),
+                    finish="matte")
+    scene.materials["LED"] = glow
+    _quad(scene, 2).attrs.update(glow.face_attrs())
+    out = tmp_path / "a.glb"
+    save_glb(scene, out)
+
+    again = Scene()
+    load_glb(again, out)
+    got = again.materials["Acero"].surface
+    assert got.roughness == pytest.approx(0.8) and got.metallic == 1.0
+    assert got.map("roughness").channel == "g"
+    assert got.map("metallic").channel == "b"
+    assert got.map("ao").strength == pytest.approx(0.7)
+    assert got.map("normal").strength == pytest.approx(0.6)
+    led = again.materials["LED"].surface
+    assert led.kind == "light" and led.luminance == pytest.approx(3000.0, rel=1e-5)
+    faces = [f for g in again.groups for f in g.mesh.faces]
+    assert {f.attrs.get("mat") for f in faces} == {"Acero", "LED"}
+
+    out2 = tmp_path / "b.glb"
+    save_glb(again, out2)
+    m1 = {m["name"]: m for m in _glb_json(out)["materials"]}
+    m2 = {m["name"]: m for m in _glb_json(out2)["materials"]}
+    for name in ("Acero", "LED"):
+        for key in ("pbrMetallicRoughness", "occlusionTexture",
+                    "normalTexture", "emissiveFactor", "extensions"):
+            a, b = m1[name].get(key), m2[name].get(key)
+            if isinstance(a, dict):
+                a = {k: v for k, v in a.items() if k != "index"
+                     and not isinstance(v, dict)}
+                b = {k: v for k, v in b.items() if k != "index"
+                     and not isinstance(v, dict)}
+            assert a == b, (name, key)
+
+
+def test_glb_import_leaves_plain_materials_anonymous(tmp_path):
+    from formats.glb import load_glb
+    scene = Scene()
+    _quad(scene).attrs.update({"color": (0.3, 0.5, 0.2)})
+    out = tmp_path / "p.glb"
+    save_glb(scene, out)
+    again = Scene()
+    load_glb(again, out)
+    assert not again.materials
