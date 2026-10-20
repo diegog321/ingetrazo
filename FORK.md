@@ -87,6 +87,30 @@ example `core/pbr.py`, `views/pbr_panel.py`) and keep edits to big upstream
 files such as `views/viewport.py` and `views/tray.py` small. That keeps
 weekly merges painless.
 
+## PBR materials (fork feature)
+
+Materials tray ▸ **Surface (PBR)** edits the surface of the active named
+material: a type (Generic, Metal, Glass, Water, Light), roughness, metallic,
+normal or bump map, ambient occlusion and emission, each with a map slot,
+and a live preview ball. **+ PBR set…** makes a material from the images of
+a downloaded set (Poly Haven, ambientCG, …), assigning each file by its name.
+Right-click a swatch ▸ **Edit surface (PBR)…** opens it for that material.
+
+- Stored on the named material (`Material.surface`, `core/pbr.py`) in the
+  `.igz`, maps embedded like any texture. Faces and the viewport are
+  untouched: the viewport still shows base colour and texture.
+- Exported to glTF/GLB with packed ORM, normal, occlusion and emissive maps
+  (`core/pbr_gltf.py`), so **Render with Blender** gets the full material.
+- Emission is in cd/m²; in Blender 683 cd/m² is an emission strength of 1,
+  the same scale as Render with Blender's lights in watts.
+- SKP, DAE and OBJ exports keep the base colour only.
+- An upstream IngeTrazo build opens these files normally (base colour,
+  textures and the finish survive) but drops the surfaces if it re-saves.
+
+Every edit to an upstream file is marked `fork:pbr` (`git grep fork:pbr`),
+and `tests/test_fork_pbr.py` checks each of those hooks is still in place
+after a sync. The fork's own translations live in `i18n/fork/`.
+
 ## License
 
 IngeTrazo is GPL-3.0-or-later, and so is this fork (see `LICENSE`). If you

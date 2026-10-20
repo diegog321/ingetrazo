@@ -318,3 +318,23 @@ def test_match_set_prefers_gl_and_separate_maps():
     assert out[files[4]][0] == "roughness"
     assert out[files[3]][0] == "arm"          # still fills AO + metallic
     assert out[files[5]] is None
+
+
+# ---- Seams (after every upstream sync) --------------------------------------
+
+@pytest.mark.parametrize("path, needle", [
+    ("core/materials.py", "surface=Surface.from_dict"),
+    ("formats/gltf.py", "_apply_surface(mat, surface, _pbr_image, used_ext)"),
+    ("formats/meshexport.py", "def _add_face(face, materials, prims, split=None)"),
+    ("views/tray.py", "SurfacePanel(window, self)"),
+    ("views/tray.py", "surface=old.surface"),
+    ("views/tray.py", "surface=existing.surface if existing else None"),
+    ("resources/blender/render_scene.py", 'mat.get("ingetrazo_surface")'),
+    ("core/i18n.py", '_I18N_DIR / "fork"'),
+    ("ingetrazo.spec", "i18n/fork/*.json"),
+])
+def test_fork_seam_is_still_in_place(path, needle):
+    """Every hook the fork keeps in an upstream file (marked ``fork:pbr``).
+    A sync that drops one fails here, by name, instead of silently."""
+    from core.paths import app_root
+    assert needle in (app_root() / path).read_text(encoding="utf-8")
