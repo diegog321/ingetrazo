@@ -27,7 +27,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 FACE_MODES = ("textures", "shaded", "hidden_line", "monochrome",
-              "wireframe", "xray")
+              "wireframe", "xray",
+              "realistic")                           # fork:pbr (views/pbr_pass.py)
 
 #: The classic default back-face blue-grey: a visible back face means "you are
 #: looking at the inside" (or at a genuinely inverted face).
@@ -162,6 +163,7 @@ BUILTIN_STYLES: list[Style] = [
     Style(name="Wireframe", face_mode="wireframe",
           background=(1.0, 1.0, 1.0), sky=False),
     Style(name="X-ray", face_mode="xray"),
+    Style(name="Realistic", face_mode="realistic"),  # fork:pbr
 ]
 
 

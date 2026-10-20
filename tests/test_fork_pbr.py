@@ -332,6 +332,14 @@ def test_match_set_prefers_gl_and_separate_maps():
     ("resources/blender/render_scene.py", 'mat.get("ingetrazo_surface")'),
     ("core/i18n.py", '_I18N_DIR / "fork"'),
     ("ingetrazo.spec", "i18n/fork/*.json"),
+    ("formats/glb.py", "stamp_import(scene, mesh, js, Path(path))"),
+    ("views/viewport.py", "fragment_source(SHADER_DIR)"),
+    ("views/viewport.py", "mode = _pbr_pass.begin_frame(self, mode)"),
+    ("views/viewport.py", "_pbr_pass.geometry(self, True)"),
+    ("views/viewport.py", "_pbr_pass.overlay(self)"),
+    ("views/viewport.py", "_pbr_pass.geometry(self, False)"),
+    ("core/style.py", 'Style(name="Realistic", face_mode="realistic")'),
+    ("views/tray.py", '("realistic", "Realistic")'),
 ])
 def test_fork_seam_is_still_in_place(path, needle):
     """Every hook the fork keeps in an upstream file (marked ``fork:pbr``).
@@ -403,3 +411,26 @@ def test_glb_import_leaves_plain_materials_anonymous(tmp_path):
     again = Scene()
     load_glb(again, out)
     assert not again.materials
+
+
+# ---- Translations (M7) --------------------------------------------------------
+
+def test_every_language_has_the_fork_strings():
+    """Each interface language has an i18n/fork file with the same keys as
+    the Spanish one, and every placeholder survives the translation."""
+    import json
+    import re
+    from core.paths import app_root
+    root = app_root() / "i18n"
+    ref = json.loads((root / "fork" / "es.json").read_text(encoding="utf-8"))
+    langs = [p.stem for p in root.glob("*.json") if p.stem != "en"]
+    assert langs
+    for lang in langs:
+        path = root / "fork" / f"{lang}.json"
+        assert path.exists(), lang
+        got = json.loads(path.read_text(encoding="utf-8"))
+        assert set(got) == set(ref), lang
+        for key, text in got.items():
+            assert text.strip(), (lang, key)
+            assert (sorted(re.findall(r"\{\w+\}", key))
+                    == sorted(re.findall(r"\{\w+\}", text))), (lang, key)

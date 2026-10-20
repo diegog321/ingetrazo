@@ -3,7 +3,7 @@
 This repository, `diegog321/ingetrazo`, is an **experimental fork** of
 [ingelibre/ingetrazo](https://github.com/ingelibre/ingetrazo), the free
 push/pull 3D modeller by Marco Sumari Tellez and contributors. It exists to
-try features that are not (yet) in IngeTrazo itself. The first one planned is
+try features that are not (yet) in IngeTrazo itself. The first one is
 PBR materials in the material editor: base colour, metallic, roughness,
 normal, AO and emissive maps.
 
@@ -97,10 +97,19 @@ a downloaded set (Poly Haven, ambientCG, …), assigning each file by its name.
 Right-click a swatch ▸ **Edit surface (PBR)…** opens it for that material.
 
 - Stored on the named material (`Material.surface`, `core/pbr.py`) in the
-  `.igz`, maps embedded like any texture. Faces and the viewport are
-  untouched: the viewport still shows base colour and texture.
+  `.igz`, maps embedded like any texture. Faces are untouched.
+- Camera ▸ Style ▸ **Realistic** (or the Styles tray) shows the surfaces
+  in the viewport: GGX lighting from a studio sky (or the sun, with its
+  shadows, when Shadows are on), roughness, metal, normal/bump, AO and
+  emission maps (`views/pbr_pass.py`). It is a block added to the viewport's own shader,
+  off in every other style; set `INGETRAZO_NO_PBR=1` to keep the plain
+  shader (Realistic then draws as Textures). Glass shows as a glossy
+  surface, not see-through; the render is where glass is exact.
 - Exported to glTF/GLB with packed ORM, normal, occlusion and emissive maps
   (`core/pbr_gltf.py`), so **Render with Blender** gets the full material.
+- Imported from glTF/GLB: a material with more than a base colour (metal,
+  roughness/normal/occlusion/emissive maps, transmission) becomes a named
+  material with its surface.
 - Emission is in cd/m²; in Blender 683 cd/m² is an emission strength of 1,
   the same scale as Render with Blender's lights in watts.
 - SKP, DAE and OBJ exports keep the base colour only.
@@ -109,7 +118,8 @@ Right-click a swatch ▸ **Edit surface (PBR)…** opens it for that material.
 
 Every edit to an upstream file is marked `fork:pbr` (`git grep fork:pbr`),
 and `tests/test_fork_pbr.py` checks each of those hooks is still in place
-after a sync. The fork's own translations live in `i18n/fork/`.
+after a sync. The fork's own translations live in `i18n/fork/`, one file
+per interface language (a test checks none is missing a string).
 
 ## License
 

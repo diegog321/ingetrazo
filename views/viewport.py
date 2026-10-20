@@ -126,6 +126,7 @@ from core.mesh import Edge, Face
 from core.history import EraseSelectionCommand, History
 from core.scene import Scene
 from core.style import DEFAULT_BACK_COLOR, effective_back_color
+from views import pbr_pass as _pbr_pass                       # fork:pbr
 from core.materials import material_sig as _material_sig
 from core.snap import SnapResult, _AXIS_VECTORS
 from core.texture import face_uv_axes
@@ -1647,6 +1648,7 @@ class Viewport(QOpenGLWidget):
         self._program.setUniformValue1f(self._loc_shade, 1.0)
         self._program.setUniformValue(self._loc_hard_cutout, 0)
         self._program.setUniformValue1f(self._loc_fade, 0.0)
+        mode = _pbr_pass.begin_frame(self, mode)               # fork:pbr
 
         # Sky / ground backdrop with a horizon anchored to the camera pitch —
         # premium modeller feel. Fixed on zoom (it's the point at infinity),
@@ -1760,6 +1762,7 @@ class Viewport(QOpenGLWidget):
         if getattr(self, "_frame_shadow", None) is not None:
             self._draw_shadow_ground(style)
             self._program.setUniformValue(self._loc_shadow_enable, 1)
+        _pbr_pass.geometry(self, True)                         # fork:pbr
         if self._faces_count > 0 and mode != "wireframe":
             self._gl.glEnable(GL_POLYGON_OFFSET_FILL)
             self._gl.glPolygonOffset(1.0, 1.0)
@@ -1956,6 +1959,7 @@ class Viewport(QOpenGLWidget):
         # prototype's local VBOs with per-instance matrices — the
         # consolidated passes above excluded them in _sync_edges.
         self._draw_instanced_faces(mode, style)
+        _pbr_pass.overlay(self)                                # fork:pbr
         # Shadows stop at the face passes: edges, overlays, previews and
         # billboards stay unlit (v1 scope).
         if getattr(self, "_frame_shadow", None) is not None:
@@ -2070,6 +2074,7 @@ class Viewport(QOpenGLWidget):
         # — skipped on plan sheets and line styles: a coloured cutout person
         # on a technical drawing gives the raster away; scale figures belong
         # to the shaded looks only.
+        _pbr_pass.geometry(self, False)                        # fork:pbr
         if self.plano_style is None and mode in ("textures", "shaded", "xray"):
             self._draw_billboards()
             if self._export_size is None:
@@ -2418,6 +2423,15 @@ class Viewport(QOpenGLWidget):
         ok_v = prog.addShaderFromSourceFile(
             QOpenGLShader.Vertex, str(SHADER_DIR / "basic.vert")
         )
+        from views.pbr_pass import fragment_source           # fork:pbr
+        pbr_src = fragment_source(SHADER_DIR)                  # fork:pbr
+        if pbr_src is not None:                                # fork:pbr
+            if (ok_v and prog.addShaderFromSourceCode(         # fork:pbr
+                    QOpenGLShader.Fragment, pbr_src) and prog.link()):
+                return prog                                    # fork:pbr
+            prog = QOpenGLShaderProgram(self)                  # fork:pbr
+            ok_v = prog.addShaderFromSourceFile(               # fork:pbr
+                QOpenGLShader.Vertex, str(SHADER_DIR / "basic.vert"))
         ok_f = prog.addShaderFromSourceFile(
             QOpenGLShader.Fragment, str(SHADER_DIR / "basic.frag")
         )

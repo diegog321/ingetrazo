@@ -2867,7 +2867,8 @@ class StylesPanel(QWidget):
     #: "Shaded" the style is a preset bundle, "Shaded" the mode is one field.
     _MODES = (("textures", "Textures"), ("shaded", "Shaded"),
               ("hidden_line", "Hidden line"), ("monochrome", "Monochrome"),
-              ("wireframe", "Wireframe"), ("xray", "X-ray"))
+              ("wireframe", "Wireframe"), ("xray", "X-ray"),
+              ("realistic", "Realistic"))                # fork:pbr
 
     def __init__(self, window) -> None:
         super().__init__()
