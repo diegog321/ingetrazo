@@ -16,7 +16,7 @@ name: ci
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, experimental]   # experimental: the fork's own line (FORK.md)
   workflow_dispatch:        # manual runs from the Actions tab
 
 # A force-push to a PR branch cancels the now-obsolete run instead of

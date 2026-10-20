@@ -1,5 +1,10 @@
 # IngeTrazo
 
+> **Experimental fork.** This is `diegog321/ingetrazo`, a fork of
+> [ingelibre/ingetrazo](https://github.com/ingelibre/ingetrazo) for trying
+> new features (first: PBR materials). Branches, running from source and
+> upstream sync are in [FORK.md](FORK.md).
+
 *Pronounced **EEN-heh-TRAH-soh** — from Spanish* inge(niería) *"engineering"
 +* trazo *"a drawn stroke": the engineer's stroke.*
 
