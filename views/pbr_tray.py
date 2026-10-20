@@ -154,9 +154,13 @@ class _ValueRow:
         self.spin.setDecimals(decimals)
         self.spin.setSingleStep(step * 5)
         if suffix:
-            self.spin.setSuffix(suffix)
+            self.spin.setToolTip(suffix.strip())
+        # No arrows (the slider steps it): the trays share a 240 px floor
+        # (tests/test_trays_stay_narrow.py) and every pixel of this row counts.
+        self.spin.setButtonSymbols(QDoubleSpinBox.NoButtons)
+        self.spin.setAlignment(Qt.AlignRight)
         narrow(self.slider)
-        self.spin.setFixedWidth(96 if suffix else 58)
+        self.spin.setFixedWidth(52 if suffix else 40)
         grid.addWidget(self.slider, row, 1)
         grid.addWidget(self.spin, row, 2)
         self.button = None
@@ -246,7 +250,7 @@ class SurfacePanel(FoldSection):
         col.addLayout(top)
 
         grid = QGridLayout()
-        grid.setHorizontalSpacing(6)
+        grid.setHorizontalSpacing(4)
         grid.setVerticalSpacing(4)
         grid.setColumnStretch(1, 1)
         self._rough = _ValueRow(self, grid, 0, tr("Roughness"), "roughness",
@@ -278,7 +282,8 @@ class SurfacePanel(FoldSection):
         self._glow.setToolTip(tr("Emission colour"))
         self._glow.clicked.connect(self._pick_glow)
         grid.addWidget(self._glow, 6, 3)
-        hint = QLabel(tr("Emission colour"))
+        hint = QLabel("cd/m² · " + tr("Emission colour"))
+        hint.setWordWrap(True)
         hint.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         grid.addWidget(hint, 6, 1, 1, 2)
         col.addLayout(grid)
