@@ -1,0 +1,61 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# FORK ONLY (diegog321/ingetrazo) — see FORK.md.
+#
+# Keeps `main` an exact mirror of ingelibre/ingetrazo and offers upstream's
+# new work to `experimental` (where the fork's own changes live) as a pull
+# request, so every upstream merge goes through CI and a human click.
+#
+# 1. Fast-forward `main` from upstream (GitHub's "Sync fork", via the API).
+#    GITHUB_TOKEN may not touch files under .github/workflows/, so when an
+#    upstream commit changes a workflow this step fails unless the
+#    SYNC_TOKEN secret holds a fine-grained token with Contents + Workflows
+#    write on this repository. Without it: press "Sync fork" on GitHub.
+# 2. If `main` is ahead of `experimental`, open (or leave open) a PR
+#    main → experimental. Needs Settings ▸ Actions ▸ General ▸
+#    "Allow GitHub Actions to create and approve pull requests".
+name: fork-sync-upstream
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"     # Mondays 06:17 UTC; upstream ships ~weekly
+  workflow_dispatch:
+
+concurrency:
+  group: fork-sync-upstream
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    # Never in the upstream repository, should this file travel there.
+    if: github.repository != 'ingelibre/ingetrazo'
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ secrets.SYNC_TOKEN || github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Fast-forward main from upstream
+        run: |
+          if ! gh api -X POST "repos/$REPO/merge-upstream" -f branch=main; then
+            echo "::error::Could not sync main from upstream. If upstream changed a workflow file, add the SYNC_TOKEN secret or press 'Sync fork' on GitHub (see FORK.md)."
+            exit 1
+          fi
+
+      - name: Offer upstream to experimental
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ahead=$(gh api "repos/$REPO/compare/experimental...main" --jq .ahead_by)
+          echo "main is $ahead commit(s) ahead of experimental"
+          [ "$ahead" -gt 0 ] || exit 0
+          open=$(gh pr list -R "$REPO" --base experimental --head main --state open --json number --jq length)
+          if [ "$open" -gt 0 ]; then
+            echo "A sync PR is already open; GitHub updates it by itself."
+            exit 0
+          fi
+          gh pr create -R "$REPO" --base experimental --head main \
+            --title "Sync upstream IngeTrazo into experimental" \
+            --body "Automated: \`main\` mirrors [ingelibre/ingetrazo](https://github.com/ingelibre/ingetrazo) and is $ahead commit(s) ahead of \`experimental\`. Merge with a **merge commit** (not squash) so the next sync stays clean. Resolve conflicts locally with \`scripts/fork/dev.sh sync\` if GitHub can't."
