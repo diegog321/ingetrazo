@@ -94,6 +94,14 @@ def apply_finishes():
                      if n.type == "BSDF_PRINCIPLED"), None)
         if bsdf is None:
             continue
+        # fork:pbr — a material IngeTrazo exported with a full surface
+        # (core.pbr_gltf) is already complete: the importer wired its maps.
+        # Overriding roughness/metallic here would cut those links. Only
+        # glass and water still get what glTF cannot say.
+        surface = bool(mat.get("ingetrazo_surface"))
+        if surface and finish not in ("glass", "water"):
+            counts["surface"] = counts.get("surface", 0) + 1
+            continue
         counts[finish] = counts.get(finish, 0) + 1
         spec = ("Specular IOR Level", "Specular")
         if finish == "matte":
@@ -125,8 +133,8 @@ def apply_finishes():
                             setattr(mat, attr, value)
                         except (TypeError, ValueError):
                             pass
-            else:
-                _ripples(mat, bsdf)
+            elif not (surface and bsdf.inputs["Normal"].is_linked):
+                _ripples(mat, bsdf)                         # fork:pbr
     if counts:
         say("finishes", ", ".join(f"{k} {v}" for k, v in sorted(counts.items())))
 
