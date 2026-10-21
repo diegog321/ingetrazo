@@ -204,6 +204,10 @@ class _Bridge(QObject):
             "component_instances": insts,
             "group_names": [g.name for g in scene.groups][:100],
             "materials": sorted(getattr(scene, "materials", {}) or {})[:100],
+            "surfaces": {n: m.surface.kind                    # fork:pbr
+                         for n, m in (getattr(scene, "materials", {})
+                                      or {}).items()
+                         if getattr(m, "surface", None) is not None},
             "layers": [ly.name for ly in scene.layers],
             "dimensions": len(getattr(scene, "dimensions", []) or []),
             "section_planes": len(getattr(scene, "section_planes", []) or []),
@@ -221,7 +225,9 @@ class _Bridge(QObject):
         out_dir.mkdir(parents=True, exist_ok=True)
         out = out_dir / "viewport.png"
         image.save(str(out))
-        return {"path": str(out), "width": width, "height": height}
+        from core.pbr_recipes import png_base64                 # fork:pbr
+        return {"path": str(out), "width": width, "height": height,
+                "png_base64": png_base64(image)}              # fork:pbr
 
     def _tool_undo(self) -> dict:
         ok = self._viewport.history.undo()

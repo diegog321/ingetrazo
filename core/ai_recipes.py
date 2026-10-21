@@ -68,7 +68,8 @@ antihorario visto desde afuera); f.attrs["color"] = (r, g, b, 1.0)  (0..1)
 - Grupo manual: m = Mesh(); m.add_face([...]); g = Group(m, name="..."); \
 groups.append(g)
 - Pintar un grupo entero: g.material = {"color": (r,g,b), "opacity": 1.0} \
-— NO toques scene.materials (es el registro de materiales del documento).
+— color liso; para un material con nombre o PBR usa material() y paint() \
+(abajo), no edites scene.materials a mano.
 - Mover un grupo: for v in list(g.mesh.vertices): g.mesh.move_vertex(v, \
 QVector3D(dx,dy,dz))  — y si g.xform is not None (instancia de \
 componente), compón la traslación en g.xform en vez de tocar vértices.
@@ -101,4 +102,6 @@ UNITS = ("IngeTrazo es un modelador 3D libre de empujar/tirar: Z arriba, "
 
 def reference(unit: str = "llamada") -> str:
     """Everything, in reading order — what a door hands the model."""
-    return "\n".join((UNITS, SCOPE, RECIPES, HOW_IT_RUNS.format(unit=unit)))
+    from core.pbr_recipes import RECIPES as _PBR             # fork:pbr
+    return "\n".join((UNITS, SCOPE, RECIPES, _PBR,          # fork:pbr
+                      HOW_IT_RUNS.format(unit=unit)))
