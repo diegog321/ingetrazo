@@ -116,6 +116,7 @@ class SnapshotWithMaterials(SnapshotImport):
                 _restore(scene, self.mats_after)
             for f, _a, b in self.repainted:
                 f.attrs = dict(b)
+        self._redraw(scene)
 
     @property
     def changed_anything(self) -> bool:
@@ -127,6 +128,15 @@ class SnapshotWithMaterials(SnapshotImport):
             _restore(scene, self.mats_before)
         for f, a, _b in self.repainted:
             f.attrs = dict(a)
+        self._redraw(scene)
+
+    def _redraw(self, scene) -> None:
+        # Attr edits bypass the mesh primitives: without the dirty flags the
+        # viewport kept drawing a group's cached chunk, old picture and all.
+        if self.changed_anything:
+            from core.history import _dirty_group_chunks
+            _dirty_group_chunks(scene)
+            scene.version += 1
 
 
 def _restore(scene, state) -> None:

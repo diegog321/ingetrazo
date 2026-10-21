@@ -125,10 +125,16 @@ def test_a_new_colour_follows_onto_painted_faces_and_back(bridge):
     _run(b, 'g = box((0,0,0),(1,1,1), name="Cubo")\n'
             'paint(g, material("Pintura", color=(0.2,0.4,0.9)))')
     g = sc.groups[-1]
+    g.mesh._chunk_dirty = g.mesh._attrs_dirty = False   # as after a frame
     _run(b, 'material("Pintura", color=(0.9,0.1,0.1))')
     assert all(tuple(f.attrs["color"][:3]) == (0.9, 0.1, 0.1)
                for f in g.mesh.faces)
+    # The viewport's cached chunk must re-read the paint (live test 21 Oct:
+    # a new picture on the floor stayed the old one until restart).
+    assert g.mesh._attrs_dirty
+    g.mesh._attrs_dirty = False
     assert _ask(b, "undo")["result"]["ok"]
+    assert g.mesh._attrs_dirty
     assert all(tuple(f.attrs["color"][:3]) == (0.2, 0.4, 0.9)
                for f in g.mesh.faces)
 
