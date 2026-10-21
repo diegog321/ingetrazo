@@ -59,6 +59,15 @@ def set_language(lang: str) -> None:
         _catalog = {str(k): str(v) for k, v in data.items()}
     except (OSError, ValueError):
         _catalog = {}
+    # fork:pbr — the experimental fork's own strings, kept apart so
+    # upstream's catalogs merge without conflicts.
+    fork = _I18N_DIR / "fork" / f"{_lang}.json"
+    try:
+        if fork.exists():
+            _catalog.update({str(k): str(v) for k, v in json.loads(
+                fork.read_text(encoding="utf-8")).items()})
+    except (OSError, ValueError):
+        pass
 
 
 def current_language() -> str:

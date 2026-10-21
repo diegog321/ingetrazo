@@ -245,7 +245,7 @@ def collect_geometry(scene, face_me=None):
     return materials, prims
 
 
-def collect_geometry_split(scene, face_me):
+def collect_geometry_split(scene, face_me, split=None):
     """:func:`collect_geometry` with the face-me figures apart: returns
     ``(materials, prims, figures)`` where ``prims`` holds everything else
     and each figure is ``{"prims": …, "feet": QVector3D, "yaw": float}``
@@ -253,28 +253,36 @@ def collect_geometry_split(scene, face_me):
     materials: dict[tuple, dict] = {}
     prims: dict[tuple, list] = {}
     for face in world_faces(scene, face_me, figures=False):
-        _add_face(face, materials, prims)
+        _add_face(face, materials, prims, split)            # fork:pbr
     figures = []
     for faces, feet, yaw in faceme_figures(scene, face_me):
         own: dict[tuple, list] = {}
         for face in faces:
-            _add_face(face, materials, own)
+            _add_face(face, materials, own, split)          # fork:pbr
         if own:
             figures.append({"prims": own, "feet": feet, "yaw": yaw})
     _resolve_finishes(scene, materials)
     return materials, prims, figures
 
 
-def _add_face(face, materials, prims) -> None:
-    """One face's triangles into ``prims`` under its material's key."""
+def _add_face(face, materials, prims, split=None) -> None:
+    """One face's triangles into ``prims`` under its material's key.
+
+    ``split`` (fork:pbr, core.pbr_gltf.export_split) names the materials
+    that carry a surface: their faces get a key of their own, and a
+    colour face whose surface has maps gets planar UVs at the tile given."""
     from core.texture import affine_uv, planar_uv
     n = face.normal()
     op = face.attrs.get("opacity")
     op = None if op is None or float(op) >= 0.999 else round(float(op), 3)
     tex = face.attrs.get("texture")
+    own = face.attrs.get("mat") if split else None          # fork:pbr
+    own = own if own in (split or ()) else None
     if tex is not None and tex.get("path"):
         src = Path(tex["path"])
         key = ("tex", src.name) if op is None else ("tex", src.name, op)
+        if own:
+            key = key + (("mat", own),)                     # fork:pbr
         materials.setdefault(key, {"color": (1.0, 1.0, 1.0),
                                    "map": src.name, "src": src,
                                    "opacity": op})
@@ -294,10 +302,21 @@ def _add_face(face, materials, prims) -> None:
         # three channels (transparency is attrs["opacity"], above).
         col = tuple(face.attrs.get("color") or _DEFAULT_COLOR)[:3]
         key = ("color", col) if op is None else ("color", col, op)
+        tile = split.get(own) if own else None              # fork:pbr
+        if own:
+            key = key + (("mat", own),)
         materials.setdefault(key, {"color": col, "map": None,
                                    "opacity": op})
         if face.attrs.get("mat") and "mat" not in materials[key]:
             materials[key]["mat"] = face.attrs["mat"]
+        if tile is not None:                                # fork:pbr
+            materials[key]["uv"] = True
+            for tri in export_triangles(face):
+                pts = list(tri)
+                uv = planar_uv(n, pts, tile[0], tile[1], tile[2])
+                prims.setdefault(key, []).append(
+                    (n, [(pts[k], (uv[k][0], uv[k][1])) for k in range(3)]))
+            return
         for tri in export_triangles(face):
             pts = list(tri)
             prims.setdefault(key, []).append(

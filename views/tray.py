@@ -2022,6 +2022,11 @@ class MaterialsPanel(QWidget):
         root.addWidget(self._edit_body)
         self._load_texture_fields()
 
+        # fork:pbr — the active material's surface (views/pbr_tray.py).
+        from views.pbr_tray import SurfacePanel
+        self._surface = SurfacePanel(window, self)
+        root.addWidget(self._surface)
+
         # The last materials painted with, so texturing a model does not
         # mean hunting for the same brick in the library every time.
         self._recent_heading = self._heading(tr("Recent"))
@@ -2044,11 +2049,14 @@ class MaterialsPanel(QWidget):
         add_color.clicked.connect(self._add_color)
         add_tex = QPushButton(tr("+ Texture…"))
         add_tex.clicked.connect(self._add_texture)
+        add_set = QPushButton(tr("+ PBR set…"))               # fork:pbr
+        add_set.clicked.connect(lambda: self._surface.load_set())
         purge = QPushButton(tr("Purge"))
         purge.setToolTip(tr("Delete every material no face wears"))
         purge.clicked.connect(self._on_purge)
         btns.addWidget(add_color)
         btns.addWidget(add_tex)
+        btns.addWidget(add_set)                               # fork:pbr
         btns.addWidget(purge)
         root.addLayout(btns)
         root.addStretch(1)
@@ -2351,6 +2359,9 @@ class MaterialsPanel(QWidget):
             menu.addAction(tr("Edit colour…"),
                            lambda: QTimer.singleShot(
                                0, lambda: self._edit_named_color(name, color)))
+        # fork:pbr — make it the active paint and open its surface.
+        menu.addAction(tr("Edit surface (PBR)…"), lambda: (
+            button.click(), self._surface.open_for_active()))
         if mat is not None:
             sub = menu.addMenu(tr("Finish for the render"))
             pic = (mat.texture or {}).get("path")
@@ -2397,7 +2408,8 @@ class MaterialsPanel(QWidget):
         new_mat = Material(
             name, color=(chosen.redF(), chosen.greenF(), chosen.blueF()),
             opacity=existing.opacity if existing else None,
-            finish=existing.finish if existing else None)
+            finish=existing.finish if existing else None,
+            surface=existing.surface if existing else None)  # fork:pbr
         self._window.viewport.history.execute(
             RestampMaterialCommand(name, new_mat))
         self._window.viewport.notify_scene_changed()
@@ -2545,7 +2557,8 @@ class MaterialsPanel(QWidget):
             from core.materials import Material
             old = scene.materials[mat.name]
             new_mat = Material(mat.name, color=rgb, opacity=old.opacity,
-                               finish=old.finish)
+                               finish=old.finish,
+                               surface=old.surface)          # fork:pbr
             self._window.viewport.history.execute(
                 RestampMaterialCommand(mat.name, new_mat))
             self._window.viewport.notify_scene_changed()
@@ -2676,6 +2689,8 @@ class MaterialsPanel(QWidget):
         self._refresh_preview()
 
     def _refresh_preview(self) -> None:
+        if getattr(self, "_surface", None) is not None:      # fork:pbr
+            self._surface.refresh()
         if PaintTool.current_is_default:
             self._preview.setPixmap(_default_pixmap())
             self._preview.setToolTip(tr("Default material (no material)"))
@@ -2852,7 +2867,8 @@ class StylesPanel(QWidget):
     #: "Shaded" the style is a preset bundle, "Shaded" the mode is one field.
     _MODES = (("textures", "Textures"), ("shaded", "Shaded"),
               ("hidden_line", "Hidden line"), ("monochrome", "Monochrome"),
-              ("wireframe", "Wireframe"), ("xray", "X-ray"))
+              ("wireframe", "Wireframe"), ("xray", "X-ray"),
+              ("realistic", "Realistic"))                # fork:pbr
 
     def __init__(self, window) -> None:
         super().__init__()

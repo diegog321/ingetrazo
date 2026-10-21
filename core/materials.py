@@ -27,7 +27,7 @@ name is then just a label with nothing behind it.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Optional
 
 
@@ -49,6 +49,9 @@ class Material:
     #: How the surface answers light in a render (core.finish): one of
     #: ``core.finish.FINISHES``, or ``None`` = guessed from the name.
     finish: Optional[str] = None
+    #: Full PBR values and maps (core.pbr.Surface), or ``None`` = derived
+    #: from the finish. Experimental fork.  # fork:pbr
+    surface: Optional[object] = None
 
     def face_attrs(self) -> dict:
         """The attrs this material stamps on a face (its own name included)."""
@@ -72,17 +75,21 @@ class Material:
             entry["opacity"] = float(self.opacity)
         if self.finish is not None:
             entry["finish"] = self.finish
+        if self.surface is not None:                       # fork:pbr
+            entry["surface"] = self.surface.to_dict()
         return entry
 
     @classmethod
     def from_dict(cls, raw: dict) -> "Material":
         color = raw.get("color")
+        from core.pbr import Surface                       # fork:pbr
         return cls(
             name=raw.get("name", ""),
             color=tuple(color) if color is not None else None,
             texture=dict(raw["texture"]) if raw.get("texture") else None,
             opacity=raw.get("opacity"),
             finish=raw.get("finish") or None,
+            surface=Surface.from_dict(raw.get("surface")),  # fork:pbr
         )
 
 
@@ -130,14 +137,20 @@ def register(materials: dict, mat: Material) -> str:
     while name in materials:
         other = materials[name]
         if (other.color == mat.color and other.texture == mat.texture
-                and other.opacity == mat.opacity):
+                and other.opacity == mat.opacity
+                and _surface_dict(other) == _surface_dict(mat)):  # fork:pbr
             return name
         name = f"{base} ({n})"
         n += 1
     if name != mat.name:
-        mat = Material(name, mat.color, mat.texture, mat.opacity)
+        mat = replace(mat, name=name)      # fork:pbr: keeps finish + surface
     materials[name] = mat
     return name
+
+
+def _surface_dict(mat):                                     # fork:pbr
+    surface = getattr(mat, "surface", None)
+    return surface.to_dict() if surface is not None else None
 
 
 def has_own_material(attrs) -> bool:

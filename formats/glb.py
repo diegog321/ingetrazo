@@ -455,6 +455,8 @@ def _load_glb_inner(scene, path, progress=None) -> None:
     if s != 1.0:
         batches = [(tris * s, uvs, r) for tris, uvs, r in batches]
     mesh = build_mesh(batches, progress=progress)
+    from core.pbr_gltf import stamp_import                  # fork:pbr
+    stamp_import(scene, mesh, js, Path(path))
     title = (js.get("asset", {}).get("extras", {}) or {}).get("title")
     name = (title or Path(path).stem)[:60]
     group = Group(mesh, name=name)

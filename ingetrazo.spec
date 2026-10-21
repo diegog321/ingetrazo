@@ -56,6 +56,7 @@ datas = [
     ('resources/components/*.png', 'resources/components'),
     ('resources/components/thumbs/*.png', 'resources/components/thumbs'),
     ('i18n/*.json',                'i18n'),
+    ('i18n/fork/*.json',           'i18n/fork'),       # fork:pbr
     # Bundled plugins (Extensions menu) — discovered by file path at runtime.
     ('plugins/*.py',               'plugins'),
     # Example extensions: shipped but NOT loaded — Extensions ▸ Example

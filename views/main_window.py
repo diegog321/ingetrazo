@@ -109,6 +109,8 @@ _STYLE_TIPS = {
                   "materials.",
     "Wireframe": "Only the edges: the faces are not drawn.",
     "X-ray": "See-through faces, so the edges behind them show.",
+    "Realistic": "Materials lit like a render: roughness, metal, "  # fork:pbr
+                 "relief maps and glow.",
 }
 _SAVE_TIP = ("Save the document — the model and every sheet — to its .igz "
              "file.")

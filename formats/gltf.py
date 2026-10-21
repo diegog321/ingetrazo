@@ -72,7 +72,7 @@ def _mesh_name(key, tree) -> str:
 _FILE_FACING = (0.0, -1.0, 0.0)
 
 
-def _file_hierarchy(scene, only=None):
+def _file_hierarchy(scene, only=None, split=None):
     """The model as a tree for a file: ``(materials, meshes, roots)``.
 
     ``meshes`` maps a key to the triangles of ONE mesh in its own
@@ -103,7 +103,7 @@ def _file_hierarchy(scene, only=None):
     if loose:
         prims: dict = {}
         for f in loose:
-            _add_face(f, materials, prims)
+            _add_face(f, materials, prims, split)  # fork:pbr
         meshes["loose"] = prims
         roots.append({"name": tr("Loose geometry"), "matrix": None,
                       "mesh": "loose", "children": []})
@@ -121,7 +121,7 @@ def _file_hierarchy(scene, only=None):
                       else _facing_quad(mesh, toward))
             prims = {}
             for f in turned.faces:
-                _add_face(f, materials, prims)
+                _add_face(f, materials, prims, split)  # fork:pbr
             if prims:
                 key = ("figure", len(figures))
                 meshes[key] = prims
@@ -136,7 +136,7 @@ def _file_hierarchy(scene, only=None):
         if key not in meshes:
             prims = {}
             for f in g.mesh.faces:
-                _add_face(f, materials, prims)
+                _add_face(f, materials, prims, split)  # fork:pbr
             meshes[key] = prims
         node = {"name": getattr(g, "name", "") or tr("Group"),
                 "matrix": m, "mesh": key if meshes[key] else None,
@@ -180,11 +180,15 @@ def save_glb(scene, path, face_me=None, only=None) -> None:
     # (Render ▸ sync with the view) turns them instead of re-exporting.
     figures: list = []
     tree = None
+    from core.pbr_gltf import export_split                 # fork:pbr
+    split = export_split(scene)                             # fork:pbr
     if face_me is not None:
         from formats.meshexport import collect_geometry_split
-        materials_in, prims, figures = collect_geometry_split(scene, face_me)
+        materials_in, prims, figures = collect_geometry_split(
+            scene, face_me, split)                          # fork:pbr
     else:
-        materials_in, mesh_prims, tree = _file_hierarchy(scene, only)
+        materials_in, mesh_prims, tree = _file_hierarchy(
+            scene, only, split)                             # fork:pbr
         prims = {}
 
     buf = bytearray()
@@ -227,6 +231,32 @@ def save_glb(scene, path, face_me=None, only=None) -> None:
 
     names = export_names(materials_in)
     used_ext: set = set()
+
+    def _pbr_image(src) -> int | None:                      # fork:pbr
+        """Embed one surface map (core.pbr_gltf), shared by path."""
+        tex_idx = tex_for_image.get(str(src))
+        if tex_idx is not None:
+            return tex_idx
+        try:
+            img_bytes = Path(src).read_bytes()
+        except OSError:
+            return None
+        if not is_image_bytes(img_bytes):
+            return None
+        _align()
+        buffer_views.append({"buffer": 0, "byteOffset": len(buf),
+                             "byteLength": len(img_bytes)})
+        buf.extend(img_bytes)
+        images.append({"bufferView": len(buffer_views) - 1,
+                       "mimeType": _mime(Path(src).name),
+                       "name": Path(src).name})
+        if not samplers:
+            samplers.append({"wrapS": 10497, "wrapT": 10497})  # REPEAT
+        textures.append({"source": len(images) - 1, "sampler": 0})
+        tex_for_image[str(src)] = len(textures) - 1
+        return len(textures) - 1
+
+    registry = getattr(scene, "materials", None) or {}      # fork:pbr
     for key in keys:
         info = materials_in[key]
         mat: dict = {"name": names[key],
@@ -297,6 +327,10 @@ def save_glb(scene, path, face_me=None, only=None) -> None:
             factor[3] = float(op)
             mat["alphaMode"] = "BLEND"
             mat.pop("alphaCutoff", None)
+        surface = getattr(registry.get(info.get("mat")), "surface", None)
+        if surface is not None and info.get("mat") in split:  # fork:pbr
+            from core.pbr_gltf import apply as _apply_surface
+            _apply_surface(mat, surface, _pbr_image, used_ext)
         mat_index[key] = len(gltf_materials)
         gltf_materials.append(mat)
 
@@ -307,7 +341,8 @@ def save_glb(scene, path, face_me=None, only=None) -> None:
             if key not in source:
                 continue
             tris = source[key]
-            textured = key[0] == "tex"
+            textured = (key[0] == "tex"
+                        or materials_in[key].get("uv"))      # fork:pbr
             positions: list[tuple] = []
             normals: list[tuple] = []
             uvs: list[tuple] = []
