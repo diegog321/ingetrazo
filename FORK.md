@@ -112,6 +112,11 @@ Right-click a swatch ▸ **Edit surface (PBR)…** opens it for that material.
   material with its surface.
 - Emission is in cd/m²; in Blender 683 cd/m² is an emission strength of 1,
   the same scale as Render with Blender's lights in watts.
+- AI doors (MCP bridge, in-app assistant, Python console): `material(name,
+  color, kind=…, roughness=…, …)` and `paint(group, name)` make and apply
+  PBR materials (`core/pbr_recipes.py`), taught in the recipe book; every
+  `run_python` step that edits materials is one undo step, and screenshots
+  travel inside the bridge reply, so a client on another machine sees them.
 - SKP, DAE and OBJ exports keep the base colour only.
 - An upstream IngeTrazo build opens these files normally (base colour,
   textures and the finish survive) but drops the surfaces if it re-saves.

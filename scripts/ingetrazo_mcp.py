@@ -155,6 +155,12 @@ def _call(name: str, args: dict) -> dict:
     if not reply.get("ok"):
         return _tool_result(str(reply.get("error")), is_error=True)
     result = reply.get("result") or {}
+    if name == "screenshot" and result.get("png_base64"):     # fork:pbr
+        # The picture rides the reply: the app's temp folder may be on
+        # another machine or sandbox than this script (fork:pbr).
+        return {"content": [{"type": "image",
+                             "data": result["png_base64"],
+                             "mimeType": "image/png"}]}
     if name == "screenshot" and result.get("path"):
         try:
             with open(result["path"], "rb") as fh:

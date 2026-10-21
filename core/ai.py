@@ -352,8 +352,10 @@ def _recipe_helpers(scene) -> dict:
         out.append(_finish(roof_mesh, roof_color, f"{name} · Techo"))
         return out
 
+    from core.pbr_recipes import helpers as _pbr_helpers     # fork:pbr
     return {"box": box, "revolve": revolve, "extrude": extrude,
-            "prism": prism, "wall": wall, "house": house}
+            "prism": prism, "wall": wall, "house": house,
+            **_pbr_helpers(scene)}                            # fork:pbr
 
 
 def _tidy_groups(scene) -> None:
@@ -410,7 +412,8 @@ def run_transactional(viewport, code: str, scope: dict) -> dict:
         finally:
             sys.stdout, sys.stderr = old_out, old_err
 
-    cmd = SnapshotImport(mutate)
+    from core.pbr_commands import SnapshotWithMaterials     # fork:pbr
+    cmd = SnapshotWithMaterials(mutate)                       # fork:pbr
     saved_redo = list(history.redo_stack)
     history.execute(cmd)
     error = history.last_error
@@ -419,7 +422,8 @@ def run_transactional(viewport, code: str, scope: dict) -> dict:
         unchanged = (cmd.before == cmd.after
                      and not cmd.added_groups and not cmd.added_layers
                      and not cmd.added_views and not cmd.added_dims
-                     and not cmd.added_texts and not cmd.added_sheets)
+                     and not cmd.added_texts and not cmd.added_sheets
+                     and not cmd.changed_anything)            # fork:pbr
         if (unchanged and history.undo_stack
                 and history.undo_stack[-1] is cmd):
             history.undo_stack.pop()
